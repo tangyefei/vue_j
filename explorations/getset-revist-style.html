@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+        <head>
+                <title>ideal</title>
+                <meta charset="utf-8">
+        </head>
+        <body>
+                <div id="test">
+                    <p>{{msg}}</p>
+                    <p>{{msg}}</p>
+                    <p>{{msg}}</p>
+                    <p>{{what}}</p>
+                    <p>{{hey}}</p>
+                </div>
+                <script>
+                    function Element(id, initData) {
+                        let el = this.el = document.querySelectorAll('#' + id)[0],
+                            bindings = {},
+                            data = this.data = {};
+                            // console.log(el.innerHTML)
+                            el.innerHTML = el.innerHTML.replace(/\{\{(.*)\}\}/g, markToken);
+
+
+                        function markToken(match, variable) {
+                            bindings[variable] = {};
+                            return '<span data-binding="' + variable + '"></span>'
+                        }
+
+                        for(var variable in bindings) {
+                            bind(variable);
+                        }
+
+                        for(var key in initData) {
+                            data[key] = initData[key];
+                        }
+
+                        function bind(variable) {
+                            bindings[variable].els = document.querySelectorAll('[data-binding="' + variable + '"]');
+                            [].forEach.call(bindings[variable].els, function(e) {
+                                e.removeAttribute("data-binding");
+                            });
+                            Object.defineProperty(data, variable, {
+                                set: function(val) {
+                                    [].forEach.call(bindings[variable].els, function(e) {
+                                        bindings[variable].value = e.textContent = val;
+                                    });
+                                },
+                                get: function(){
+                                    return bindings[variable].value;
+                                }
+                            })
+                        }
+
+
+
+                    }
+
+                    Element('test', {
+                        msg: 'hello'
+                    });
+
+
+                </script>
+        </body>
+</html>
