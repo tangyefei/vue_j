@@ -1,0 +1,83 @@
+{
+  "_args": [
+    [
+      "component-builder@0.9.x",
+      "/Users/tangyefei/Documents/projects/vue/node_modules/grunt-component-build"
+    ]
+  ],
+  "_from": "component-builder@>=0.9.0 <0.10.0",
+  "_id": "component-builder@0.9.2",
+  "_inCache": true,
+  "_installable": true,
+  "_location": "/component-builder",
+  "_npmUser": {
+    "email": "tj@vision-media.ca",
+    "name": "tjholowaychuk"
+  },
+  "_npmVersion": "1.2.30",
+  "_phantomChildren": {},
+  "_requested": {
+    "name": "component-builder",
+    "raw": "component-builder@0.9.x",
+    "rawSpec": "0.9.x",
+    "scope": null,
+    "spec": ">=0.9.0 <0.10.0",
+    "type": "range"
+  },
+  "_requiredBy": [
+    "/grunt-component-build"
+  ],
+  "_resolved": "https://registry.npmjs.org/component-builder/-/component-builder-0.9.2.tgz",
+  "_shasum": "78b59e82ef174420a2067e702780fa0d17ab6947",
+  "_shrinkwrap": null,
+  "_spec": "component-builder@0.9.x",
+  "_where": "/Users/tangyefei/Documents/projects/vue/node_modules/grunt-component-build",
+  "author": {
+    "email": "tj@vision-media.caa",
+    "name": "TJ Holowaychuk"
+  },
+  "bugs": {
+    "url": "https://github.com/component/builder.js/issues"
+  },
+  "dependencies": {
+    "batch": "0.2.1",
+    "better-assert": "~0.1.0",
+    "component-require": "0.3.1",
+    "cp": "~0.1.0",
+    "debug": "*",
+    "mkdirp": "0.3.4",
+    "string-to-js": "0.0.1"
+  },
+  "description": "Component build tool",
+  "devDependencies": {
+    "ejs": "~0.8.3",
+    "mocha": "*",
+    "should": "*",
+    "styl": "0.2.2"
+  },
+  "directories": {},
+  "dist": {
+    "shasum": "78b59e82ef174420a2067e702780fa0d17ab6947",
+    "tarball": "https://registry.npmjs.org/component-builder/-/component-builder-0.9.2.tgz"
+  },
+  "homepage": "https://github.com/component/builder.js#readme",
+  "keywords": [
+    "component",
+    "build"
+  ],
+  "main": "index",
+  "maintainers": [
+    {
+      "email": "tj@vision-media.ca",
+      "name": "tjholowaychuk"
+    }
+  ],
+  "name": "component-builder",
+  "optionalDependencies": {},
+  "readme": "ERROR: No README data found!",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/component/builder.js.git"
+  },
+  "version": "0.9.2"
+}

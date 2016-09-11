@@ -25,8 +25,7 @@ module.exports = function( grunt ) {
             build: {
                 src: ['test/test.html'],
                 options: {
-                    reporter: 'Spec',
-                    run: true
+                        run: true
                 }
             }
         },
