@@ -3,6 +3,7 @@
     "browser": true,
     "asi": true,
     "multistr": true,
+    "laxbreak": true,
     "undef": true,
     "unused": true,
     "trailing": true,
