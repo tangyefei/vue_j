@@ -1,3 +1,37 @@
+// module.exports = {
+//     text: function(el,value){
+//         el.textContent = value;
+//         console.log("sd-text executed...")
+//     },
+//     show: function(el,value){
+//         console.log("sd-show executed...")
+//         if(value){
+//             el.style.display = 'block';
+//         }
+//         else {
+//             el.style.display = 'none';
+//         }
+//     },
+//     class: function(el,value,opt){
+//         console.log("sd-class executed...")
+//         el.classList[value ? 'add' : 'remove'](opt);
+//     },
+//     on: {
+//         update: function(el,handler,opt) {
+            
+//             handler.bind(el);
+//             el.addEventListener(opt, handler);
+//         },
+//         customFilter: function(handler, filter) {
+//             return function(e) {
+//                 if(e.target.webkitMatchesSelector(filter)) {
+//                     handler();
+//                     // handler.apply(this.arguments);
+//                 }
+//             }
+//         }
+//     }
+// }   
 module.exports = {
     text: function(el, value) {
         el.textContent = value || '';
@@ -22,7 +56,6 @@ module.exports = {
                 el.addEventListener(event, handler);
                 handlers[event] = handler;
             }
-
         },
         unbind: function(el, event, directive) {
             if(directive.handlers) {

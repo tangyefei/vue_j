@@ -4,13 +4,18 @@
     <meta charset="UTF-8">
     <title>Document</title>
     <script src="dist/seed.js"></script>
+    <style>
+        .red {
+            color: red;
+        }
+    </style>
 </head>
 <body>
     <div id="test" sd-on-click="changeMessage | .button">
         <p sd-text="msg | capitalize"></p>
         <p sd-show="something">YOYOYO</p>
-        <p class="button" sd-text="msg"></p>
         <p sd-class-red="error" sd-text="hello"></p>
+        <p class="button" sd-text="msg"></p>
     </div>
     <script>
         var Seed = require('seed');
@@ -19,6 +24,8 @@
             scope: {
                 msg: 'hello',
                 hello: 'WHWHWHW',
+                something: false,
+                error: true,
                 changeMessage: function() {
                     app.scope.msg = 'hola';
                 }
