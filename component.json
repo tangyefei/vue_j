@@ -8,6 +8,7 @@
 	"scripts": [
 		"src/main.js",
                 "src/filters.js",
+                "src/directive.js",
                 "src/directives.js"
 	]
 }

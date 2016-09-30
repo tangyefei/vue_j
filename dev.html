@@ -11,24 +11,47 @@
     </style>
 </head>
 <body>
-    <div id="test" sd-on-click="changeMessage | .button">
-        <p sd-text="msg | capitalize"></p>
-        <p sd-show="something">YOYOYO</p>
+    <div id="test" sd-on-click="changeMessage | delegate .button">
+        <p sd-text="msg.now | capitalize" sd-on-click="remove"></p>
+        <p sd-text="msg.now | uppercase"></p>
         <p sd-class-red="error" sd-text="hello"></p>
-        <p class="button" sd-text="msg"></p>
+        <div sd-each="todos">
+            <p sd-text="text"></p>
+        </div>
+        <p class="button">click</p>
     </div>
     <script>
+
+
+ 
+
+         var logger = {
+            x: 0,       
+            updateCount: function(){
+                this.x++;
+                console.log(this.x);
+            }
+        }
+
+        document.querySelector('.button').addEventListener('click', logger.updateCount.bind(logger));
+
         var Seed = require('seed');
         var app = Seed.create({
             id: 'test', 
             scope: {
-                msg: 'hello',
-                hello: 'WHWHWHW',
-                something: false,
+                "msg.now": 'hello',
+                hello: 'hello',
                 error: true,
                 changeMessage: function() {
-                    app.scope.msg = 'hola';
-                }
+                    app.scope["msg.now"] = 'hola';
+                },
+                remove() {
+                    app.destroy();
+                },
+                todos: [
+                    {title: "make this work",done:false},
+                    {title: "make this shit kinda work",done:true}
+                ]
             }
         });
     </script>
