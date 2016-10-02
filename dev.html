@@ -1,60 +1,91 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Document</title>
-    <script src="dist/seed.js"></script>
-    <style>
-        .red {
+<title>title</title>
+<meta charset="utf-8">
+<script src="dist/seed.js"></script>
+<style type="text/css">
+    .red {
             color: red;
-        }
-    </style>
+    }
+    .todo.done {
+        text-decoration: line-through;
+    }
+</style>
 </head>
 <body>
-    <div id="test" sd-on-click="changeMessage | delegate .button">
-        <p sd-text="msg.now | capitalize" sd-on-click="remove"></p>
-        <p sd-text="msg.now | uppercase"></p>
-        <p sd-class-red="error" sd-text="hello"></p>
-        <div sd-each="todos">
-            <p sd-text="text"></p>
-        </div>
-        <p class="button">click</p>
+    <div id="app" sd-controller="TodoList" sd-on="click:changeMessage | delegate .button">
+        <p sd-text="msg | capitalize"></p>
+        <p sd-text="msg | uppercase"></p>
+        <p sd-on="click:remove">bye</p>
+        <p sd-text="total | money"></p>
+        <p class="button">Change Message</p>
+        <p sd-class="red:error" sd-show="error">Error</p>
+        <ul sd-show="todos">
+            <li class="todo"
+                sd-controller="Todo"
+                sd-each="todo:todos"
+                sd-class="done:todo.done"
+                sd-on="click:changeMessage, click:todo.toggle"
+                sd-text="todo.title"
+            ></li>
+        </ul>
+
     </div>
-    <script>
+<script>
 
+        var Seed = require('seed')
 
- 
+        Seed.filter('money', function (value) {
+            return value ? '$' + value.toFixed(2) : ''})
 
-         var logger = {
-            x: 0,       
-            updateCount: function(){
-                this.x++;
-                console.log(this.x);
+        Seed.controller('TodoList', function (scope, seed) {
+            console.log('controller invoked')
+            scope.changeMessage = function () {
+                scope.msg = (Math.random() * 100).toFixed(2) + '% awesomeness'
             }
+            scope.remove = function () {
+                seed.destroy()
+            }
+        })
+
+        Seed.controller('Todo', function (scope) {
+            scope.toggle = function () {
+                scope.done = !scope.done
+            }
+        })
+
+        var s = Date.now()
+
+        var data = {
+            msg: 'hello!',
+            total: 9999,
+            error: true,
+            todos: [
+                {
+                    title: 'hello!',
+                    done: true
+                },
+                {
+                    title: 'hello!!',
+                    done: false
+                },
+                {
+                    title: 'hello!!!',
+                    done: false
+                }
+            ]
         }
 
-        document.querySelector('.button').addEventListener('click', logger.updateCount.bind(logger));
+        var app = Seed.bootstrap({
+            el: '#app',
+            data: data
+        })
 
-        var Seed = require('seed');
-        var app = Seed.create({
-            id: 'test', 
-            scope: {
-                "msg.now": 'hello',
-                hello: 'hello',
-                error: true,
-                changeMessage: function() {
-                    app.scope["msg.now"] = 'hola';
-                },
-                remove() {
-                    app.destroy();
-                },
-                todos: [
-                    {title: "make this work",done:false},
-                    {title: "make this shit kinda work",done:true}
-                ]
-            }
-        });
-    </script>
-    
+        data.todos.push({'title': 'added', done: true});
+
+        console.log(Date.now() - s + 'ms')
+
+</script>
 </body>
 </html>

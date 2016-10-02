@@ -1,8 +1,7 @@
 var Seed = require('seed')
 
 describe('Seed', function () {
-    it('should have a variable', function () {
-        // assert.equal(Seed, 123)
-        assert.ok(Seed.create)
+    it('should have a extend method', function () {
+        assert.ok(Seed.extend)
     })
 })
