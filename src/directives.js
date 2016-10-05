@@ -12,7 +12,15 @@ module.exports = {
     },
 
     class: function (value) {
-        this.el.classList[value ? 'add' : 'remove'](this.arg)
+        if(this.arg) {
+            this.el.classList[value ? 'add' : 'remove'](this.arg)
+        }
+        else {
+            console.log('ever come here?')
+            this.el.classList.remove(this.lastvalue);
+            this.el.classList.add(value);
+            this.lastvalue = value;
+        }
     },
 
     on: {
