@@ -8,87 +8,109 @@
     .red {
             color: red;
     }
-    .todo.done {
+    .done {
         text-decoration: line-through;
     }
+
+    #app.all .all,
+    #app.remaining .remaining,
+    #app.completed .completed {
+        font-weight: bold;
+    }
+
+    #app.remaining .done,
+    #app.done .remaining {
+        display: none;
+    }
+
+
 </style>
 </head>
 <body>
-    <div id="app" sd-controller="TodoList" sd-on="click:changeMessage | delegate .button">
-        <p sd-text="msg | capitalize"></p>
-        <p sd-text="msg | uppercase"></p>
-        <p sd-on="click:remove">bye</p>
-        <p sd-text="total | money"></p>
-        <p class="button">Change Message</p>
-        <p sd-class="red:error" sd-show="error">Error</p>
+    <div id="app" sd-controller="TodoList" class="all">
+        <div>
+            <input sd-on="change:addTodo" placeholder="What needs to be done?" />
+        </div>
+
+        <!-- 如何传输正确的参数给到toggleTodo和removeTodo -->
+            <!-- callback({e: ...}) -->
+        <!-- 什么时候能用function remaining给sd-text赋值了,Array.prototype.reduce -->
+            <!-- 累加器，第一个参数为initialvalue，第二个参数是便利得到的手，返回值作为下一轮循环的initialValue -->
+        <!-- e.el e.seed是怎么赋值的 -->
+            <!-- e.seed = -->
+        <!-- seed.js line 71  null改为this有什么用？ -->
+            <!-- 并没有什么用 -->
+        <!-- 为什么直接attributes.forEach slice.call(node.attributes)? -->
+            <!-- 等同于复制一个数组 -->
+        <!-- self.seed.scope[self.key] = el.checked; line 43  self.key是什么值？ -->
+            <!-- text之类的值 -->
+        <!-- node.nodeType === 3 -->
+            <!-- 不包含显示标签的文本节点（回忆Dom树结构中的分类），有些还是无意生成的文本节点 -->
+
         <ul sd-show="todos">
-            <li class="todo"
-                sd-controller="Todo"
-                sd-each="todo:todos"
-                sd-class="done:todo.done"
-                sd-on="click:todo.toggle"
-                sd-text="todo.title"
-            ></li>
+            <li class="todo" sd-each="todo:todos" sd-class="done:todo.done">
+                <input type="checkbox" sd-checked="todo.done" sd-on="change:toggleTodo">
+                <span sd-text="todo.text"></span>
+                <a sd-on="click:removeTodo">X</a>
+            </li>
         </ul>
 
+        <div id="footer">
+            Remaining: <span sd-text="remaining"></span><br/>
+            <a class="all" sd-on="click:filter">Show All</a>
+            <a class="remaining" sd-on="click:filter">Show Remaining</a>
+            <a class="completed" sd-on="click:filter">Show Completed</a>
+        </div>
     </div>
 <script>
-
-        var Seed = require('seed')
-
-        Seed.filter('money', function (value) {
-            return value ? '$' + value.toFixed(2) : ''})
-
-        Seed.controller('TodoList', function (scope, seed) {
-            seed.on('toggle', function (todo) {
-                console.log(todo)
-            })
-            scope.changeMessage = function () {
-                scope.msg = (Math.random() * 100).toFixed(2) + '% awesomeness'
-            }
-            scope.remove = function () {
-                seed.destroy()
-            }
-        })
-
-        Seed.controller('Todo', function (scope, seed) {
-            scope.toggle = function () {
-                scope.done = !scope.done
-                seed.parentSeed.emit('toggle', scope)
-            }
-        })
-
-        var s = Date.now()
-
         var data = {
-            msg: 'hello!',
-            total: 9999,
-            error: true,
             todos: [
-                {
-                    title: 'hello!',
-                    done: true
-                },
-                {
-                    title: 'hello!!',
-                    done: false
-                },
-                {
-                    title: 'hello!!!',
-                    done: false
-                }
+                {text:"1!",done:false},
+                {text:"2!",done:false},
+                {text:"3!",done:true}
             ]
         }
 
-        var app = Seed.bootstrap({
-            el: '#app',
-            data: data
+        var Seed = require('seed')
+
+        Seed.plant('TodoList', function(scope, seed) {
+
+            scope.remaining = scope.todos.reduce(function(count, todo) {
+                return count + (todo.done ? 0 : 1)
+            }, 0);
+
+            scope.addTodo = function(e) {
+                var text = e.originalEvent.target.value;
+                if(text) {
+                    e.originalEvent.target.text = '';
+                    scope.todos.push({
+                        text: text, 
+                        done: false
+                    });
+                    scope.remaining ++;
+                }
+            } 
+            scope.removeTodo = function(e) {
+                var i = e.seed.eachIndex;
+                scope.todos.splice(i, 1);
+            }
+            scope.toggleTodo = function(e) {
+                scope.remaining += (e.seed.scope.done ?  -1 : 1);
+            }
+            scope.filter = function(e) {
+                var filter = e.el.className;
+                seed.el.className = filter;
+            }
         })
 
-        data.todos.push({'title': 'added', done: true});
 
-        console.log(Date.now() - s + 'ms')
+        var now = Date.now()
+        var app = Seed.sprout({
+            el: "#app",
+            data: data
+        });
 
+        console.log(Date.now() - now);
 </script>
 </body>
 </html>

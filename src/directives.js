@@ -1,10 +1,10 @@
 var config = require('./config'),
-    watchArray = require('./watchArray')
+    watchArray = require('./watch-array')
 
 module.exports = {
 
     text: function (value) {
-        this.el.textContent = value || ''
+        this.el.textContent = value === null ? '' : value.toString()
     },
 
     show: function (value) {
@@ -17,13 +17,22 @@ module.exports = {
 
     on: {
         update: function (handler) {
-            var event = this.arg
+            var self = this,
+                event = this.arg;
             if (this.handler) {
                 this.el.removeEventListener(event, this.handler)
             }
             if (handler) {
-                this.el.addEventListener(event, handler)
-                this.handler = handler
+                var _handler = function(e) {
+                    handler({
+                        el: e.currentTarget,
+                        originalEvent: e,
+                        directive: self,
+                        seed: self.seed
+                    })
+                }
+                this.el.addEventListener(event, _handler);
+                this.handler = _handler
             }
         },
         unbind: function () {
@@ -34,12 +43,29 @@ module.exports = {
         }
     },
 
+    checked: {
+        bind: function() {
+            var self = this,
+                el = this.el;
+
+            this.change = function() {
+                self.seed.scope[self.key] = el.checked;
+            }
+            el.addEventListener('change', this.change);
+        },
+        update: function(value) {
+            // 真正值被储存在了binding.value中，这里只是用作同步到dom的操作
+            this.el.checked = value;
+        },
+        unbind: function() {
+            this.el.removeEventListener('change', this.change);
+        }
+    },
     each: {
         bind: function () {
             this.el.removeAttribute(config.prefix + '-each')
-            this.prefixRE = new RegExp('^' + this.arg + '.')
             var ctn = this.container = this.el.parentNode
-            this.marker = document.createComment('sd-each-' + this.arg + '-marker')
+            this.marker = document.createComment('sd-each-' + this.arg)
             ctn.insertBefore(this.marker, this.el)
             ctn.removeChild(this.el)
             this.childSeeds = []
@@ -56,7 +82,6 @@ module.exports = {
             collection.forEach(function (item, i) {
                 self.childSeeds.push(self.buildItem(item, i, collection))
             })
-            console.log('collection creation done.')
         },
         mutate: function (mutation) {
             console.log(mutation)
@@ -64,11 +89,12 @@ module.exports = {
         buildItem: function (data, index, collection) {
             var Seed = require('./seed'),
                 node = this.el.cloneNode(true)
-            console.log('buildItem ...')
-            console.log(JSON.stringify(data))
+            
             var spore = new Seed(node, data, {
-                    eachPrefixRE: this.prefixRE,
-                    parentSeed: this.seed
+                    eachPrefix: this.arg,
+                    parentSeed: this.seed,
+                    eachIndex: index,
+                    eachCollection: collection
                 })
             this.container.insertBefore(node, this.marker)
             collection[index] = spore.scope

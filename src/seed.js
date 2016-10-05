@@ -1,10 +1,9 @@
 var Emitter = require('emitter'),
     config        = require('./config'),
     controllers   = require('./controllers'),
-    bindingParser = require('./binding')
+    DirectiveParser = require('./directive-parser')
 
-var map  = Array.prototype.map,
-    each = Array.prototype.forEach
+var slice = Array.prototype.slice;
 
 // lazy init
 var ctrlAttr,
@@ -20,13 +19,15 @@ function Seed (el, data, options) {
         el = document.querySelector(el)
     }
 
+    el.seed = this
     this.el         = el
     this.scope      = data
     this._bindings  = {}
 
     if (options) {
         this.parentSeed = options.parentSeed
-        this.scopeNameRE = options.eachPrefixRE
+        this.eachPrefixRE = new RegExp('^' + options.eachPrefix + '.');
+        this.eachIndex = options.eachIndex;
     }
 
 
@@ -61,7 +62,7 @@ function Seed (el, data, options) {
 
     // copy in methods from controller
     if (controller) {
-        controller.call(null, this.scope, this)
+        controller.call(this, this.scope, this)
     }
 }
 
@@ -70,11 +71,11 @@ Emitter(Seed.prototype)
 Seed.prototype._compileNode = function (node, root) {
     var self = this
 
-    if (node.nodeType === 3) { // text node
-
+    if (node.nodeType === 3 || node.nodeType === 8) { // text node
+        console.log('has come nodeType == 3 or 8')
         self._compileTextNode(node)
 
-    } else if (node.attributes && node.attributes.length) {
+    } else {
 
         var eachExp = node.getAttribute(eachAttr),
             ctrlExp = node.getAttribute(ctrlAttr)
@@ -82,40 +83,27 @@ Seed.prototype._compileNode = function (node, root) {
         if (eachExp) { // each block
 
             console.log('eachExp...')
-            var binding = bindingParser.parse(eachAttr, eachExp)
+            var binding = DirectiveParser.parse(eachAttr, eachExp)
             if (binding) {
                 self._bind(node, binding)
                 // need to set each block now so it can inherit
                 // parent scope. i.e. the childSeeds must have been
                 // initiated when parent scope setters are invoked
+
+                // 找不到特别的理由，一定在这里调用
+
                 self.scope[binding.key] = self._dataCopy[binding.key]
                 delete self._dataCopy[binding.key]
-                console.log('delete sd-each attr...')
             }
-
         } else if (ctrlExp && !root) { // nested controllers
 
-            // TODO need to be clever here!
+        // TODO need to be clever here!
 
-        } else { // normal node (non-controller)
-
-            if (node.childNodes.length) {
-                each.call(node.childNodes, function (child) {
-                    self._compileNode(child)
-                })
-            }
-
-            // clone attributes because the list can change
-            var attrs = map.call(node.attributes, function (attr) {
-                return {
-                    name: attr.name,
-                    expressions: attr.value.split(',')
-                }
-            })
-            attrs.forEach(function (attr) {
+        } else if (node.attributes && node.attributes.length) { // normal node (non-controller)
+            slice.call(node.attributes).forEach(function(attr) {
                 var valid = false
-                attr.expressions.forEach(function (exp) {
-                    var binding = bindingParser.parse(attr.name, exp)
+                attr.value.split(',').forEach(function (exp) {
+                    var binding = DirectiveParser.parse(attr.name, exp)
                     if (binding) {
                         valid = true
                         self._bind(node, binding)
@@ -124,6 +112,15 @@ Seed.prototype._compileNode = function (node, root) {
                 if (valid) node.removeAttribute(attr.name)
             })
         }
+
+        if(!eachExp && !ctrlExp) {
+            if(node.childNodes.length) {
+                slice.call(node.childNodes).forEach(function(child) {
+                    self._compileNode(child);
+                })
+
+            }
+        }
     }
 }
 
@@ -131,13 +128,13 @@ Seed.prototype._compileTextNode = function (node) {
     return node
 }
 
-Seed.prototype._bind = function (node, bindingInstance) {
+Seed.prototype._bind = function (node, directive) {
 
-    bindingInstance.seed = this
-    bindingInstance.el = node
+    directive.el = node
+    directive.seed = this
 
-    var key = bindingInstance.key,
-        snr = this.scopeNameRE,
+    var key = directive.key,
+        snr = this.eachPrefixRE,
         isEachKey = snr && snr.test(key),
         scopeOwner = this
     // TODO make scope chain work on nested controllers
@@ -149,14 +146,16 @@ Seed.prototype._bind = function (node, bindingInstance) {
         scopeOwner = this.parentSeed
     }
 
+    directive.key = key;
+
     var binding = scopeOwner._bindings[key] || scopeOwner._createBinding(key)
 
     // add directive to this binding
-    binding.instances.push(bindingInstance)
+    binding.instances.push(directive)
 
     // invoke bind hook if exists
-    if (bindingInstance.bind) {
-        bindingInstance.bind(binding.value)
+    if (directive.bind) {
+        directive.bind(binding.value)
     }
 
 }
@@ -198,7 +197,7 @@ Seed.prototype.dump = function () {
 Seed.prototype.destroy = function () {
     for (var key in this._bindings) {
         this._bindings[key].instances.forEach(unbind)
-        ;delete this._bindings[key]
+        delete this._bindings[key]
     }
     this.el.parentNode.removeChild(this.el)
     function unbind (instance) {

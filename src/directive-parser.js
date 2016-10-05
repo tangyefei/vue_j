@@ -8,7 +8,7 @@ var KEY_RE          = /^[^\|]+/,
     FILTER_TOKEN_RE = /[^\s']+|'[^']+'/g,
     QUOTE_RE        = /'/g
 
-function Binding (directiveName, expression) {
+function Directive (directiveName, expression) {
 
     var directive = directives[directiveName]
     if (typeof directive === 'function') {
@@ -55,7 +55,7 @@ function Binding (directiveName, expression) {
     }
 }
 
-Binding.prototype.update = function (value) {
+Directive.prototype.update = function (value) {
     // apply filters
     if (this.filters) {
         value = this.applyFilters(value)
@@ -63,7 +63,7 @@ Binding.prototype.update = function (value) {
     this._update(value)
 }
 
-Binding.prototype.applyFilters = function (value) {
+Directive.prototype.applyFilters = function (value) {
     var filtered = value
     this.filters.forEach(function (filter) {
         if (!filter.apply) throw new Error('Unknown filter: ' + filter.name)
@@ -88,7 +88,7 @@ module.exports = {
         if (!valid) console.warn('invalid directive expression: ' + expression)
 
         return dir && valid
-            ? new Binding(dirname, expression)
+            ? new Directive(dirname, expression)
             : null
     }
 }
