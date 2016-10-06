@@ -6,11 +6,8 @@ var config      = require('./config'),
 var controllers = config.controllers = {},
 	datum = config.datum = {},
 	api = {};
-	
-api.config = config
 
 // API
-
 api.extend = function (opts) {
     var Spore = function () {
         Seed.apply(this, arguments)
@@ -44,12 +41,15 @@ api.controller = function (id, extensions) {
     controllers[id] = extensions
 }
 
-api.bootstrap = function () {
+api.bootstrap = function (opts) {
     var app  = {},
 	n = 0,
-        // el,
 	el = document.querySelector('[' + config.prefix + '-controller]'),
         seed;
+
+    if(opts) {
+        config.prefix = opts.prefix || config.prefix;
+    }
 	
     while(el) {
         seed = new Seed(el);

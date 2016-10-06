@@ -2,23 +2,13 @@ var Emitter         = require('emitter'),
     config          = require('./config'),
     DirectiveParser = require('./directive-parser')
 
-var slice = Array.prototype.slice
-
-var ancestorKeyRE = /\^/g,
-    rootKeyRE = /^\$/
-
-// lazy init
-var ctrlAttr,
-    eachAttr
+var slice = Array.prototype.slice,
+    ancestorKeyRE = /\^/g,
+    rootKeyRE = /^\$/,
+    ctrlAttr = config.prefix + '-controller',
+    eachAttr = config.prefix + '-each';
 
 function Seed (el, options) {
-
-
-    console.log('Seed constructor...')
-
-    // refresh
-    ctrlAttr = config.prefix + '-controller'
-    eachAttr = config.prefix + '-each'
 
     if (typeof el === 'string') {
         el = document.querySelector(el)
@@ -27,7 +17,6 @@ function Seed (el, options) {
     el.seed        = this
     this.el        = el
     this._bindings = {}
-    this.components = {}
 
     if (options) {
         for (var op in options) {
@@ -35,22 +24,14 @@ function Seed (el, options) {
         }
     }
 
-    // initiate the scope
+    // initiate the scope object
     var dataPrefix = config.prefix + '-data'
+
     this.scope =
         (options && options.data)
         || config.datum[el.getAttribute(dataPrefix)]
         || {}
     el.removeAttribute(dataPrefix)
-
-    // keep a temporary copy for all the real data
-    // so we can overwrite the passed in data object
-    // with getter/setters.
-    var key
-    this._dataCopy = {}
-    for (key in this.scope) {
-        this._dataCopy[key] = this.scope[key]
-    }
 
     // if has controller
     var ctrlID = el.getAttribute(ctrlAttr),
@@ -60,17 +41,9 @@ function Seed (el, options) {
         if (!controller) console.warn('controller ' + ctrlID + ' is not defined.')
         el.removeAttribute(ctrlAttr)
     }
-
-    // process nodes for directives
-    // first, child with sd-each directive
     
+    // revursively process nodes for directives
     this._compileNode(el, true)
-
-    // initialize all variables by invoking setters
-    for (key in this._dataCopy) {
-        this.scope[key] = this._dataCopy[key]
-    }
-    delete this._dataCopy
 
     // copy in methods from controller
     if (controller) {
@@ -97,11 +70,6 @@ Seed.prototype._compileNode = function (node, root) {
             var binding = DirectiveParser.parse(eachAttr, eachExp)
             if (binding) {
                 self._bind(node, binding)
-                // need to set each block now so it can inherit
-                // parent scope. i.e. the childSeeds must have been
-                // initiated when parent scope setters are invoked
-                self.scope[binding.key] = self._dataCopy[binding.key]
-                ;delete self._dataCopy[binding.key]
             }
 
         } else if (ctrlExp && !root) { // nested controllers
@@ -114,7 +82,7 @@ Seed.prototype._compileNode = function (node, root) {
                 self['$' + id] = seed
             }
 
-        } else if (node.attributes && node.attributes.length) { // normal node (non-controller)
+        } else if (node.attributes && node.attributes.length) { // normal node
 
             slice.call(node.attributes).forEach(function (attr) {
                 var valid = false
@@ -185,8 +153,12 @@ Seed.prototype._bind = function (node, directive) {
     binding.instances.push(directive)
 
     // invoke bind hook if exists
-    if (directive.bind) {
+    if(directive.bind) {
         directive.bind(binding.value)
+    }
+
+    if(binding.value) {
+        directive.update(binding.value);
     }
 
 }
@@ -194,7 +166,7 @@ Seed.prototype._bind = function (node, directive) {
 Seed.prototype._createBinding = function (key) {
 
     var binding = {
-        value: null,
+        value: this.scope[key],
         instances: []
     }
 
