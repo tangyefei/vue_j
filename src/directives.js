@@ -48,7 +48,7 @@ module.exports = {
                         el: e.currentTarget,
                         originalEvent: e,
                         directive: self,
-                        seed: self.seed
+                        seed: e.currentTarget.seed
                     })
                 }
                 this.el.addEventListener(event, _handler);
@@ -72,12 +72,9 @@ module.exports = {
             this.childSeeds = []
         },
         update: function (collection) {
-            if (this.childSeeds.length) {
-                this.childSeeds.forEach(function (child) {
-                    child.destroy()
-                })
-                this.childSeeds = []
-            }
+            this.unbind(true);
+            this.childSeeds = []
+
             if(!Array.isArray(collection))return
             watchArray(collection, this.mutate.bind(this))
             var self = this
@@ -96,12 +93,19 @@ module.exports = {
                     eachPrefixRE: new RegExp('^' + this.arg + '.'),
                     parentSeed: this.seed,
                     index: index,
-                    eachCollection: collection,
                     data: data
                 })
             this.container.insertBefore(node, this.marker)
             collection[index] = spore.scope
             return spore
+        },
+        unbind: function (rm) {
+            if (this.childSeeds.length) {
+                var fn = rm ? 'destroy' : 'unbind'
+                this.childSeeds.forEach(function (child) {
+                    child[fn].call()
+                })
+            }
         }
     }
 
