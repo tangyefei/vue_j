@@ -15,11 +15,23 @@ module.exports = {
         if(this.arg) {
             this.el.classList[value ? 'add' : 'remove'](this.arg)
         }
-        else {
-            console.log('ever come here?')
-            this.el.classList.remove(this.lastvalue);
-            this.el.classList.add(value);
-            this.lastvalue = value;
+    },
+
+    checked: {
+        bind: function () {
+            var el = this.el,
+                self = this
+            this.change = function () {
+                self.seed.scope[self.key] = el.checked
+            }
+            el.addEventListener('change', this.change)
+        },
+        update: function (value) {
+            // 真正值被储存在了binding.value中，这里只是用作同步到dom的操作
+            this.el.checked = value
+        },
+        unbind: function () {
+            this.el.removeEventListener('change', this.change)
         }
     },
 
@@ -50,25 +62,6 @@ module.exports = {
             }
         }
     },
-
-    checked: {
-        bind: function() {
-            var self = this,
-                el = this.el;
-
-            this.change = function() {
-                self.seed.scope[self.key] = el.checked;
-            }
-            el.addEventListener('change', this.change);
-        },
-        update: function(value) {
-            // 真正值被储存在了binding.value中，这里只是用作同步到dom的操作
-            this.el.checked = value;
-        },
-        unbind: function() {
-            this.el.removeEventListener('change', this.change);
-        }
-    },
     each: {
         bind: function () {
             this.el.removeAttribute(config.prefix + '-each')
@@ -85,6 +78,7 @@ module.exports = {
                 })
                 this.childSeeds = []
             }
+            if(!Array.isArray(collection))return
             watchArray(collection, this.mutate.bind(this))
             var self = this
             collection.forEach(function (item, i) {
@@ -98,11 +92,12 @@ module.exports = {
             var Seed = require('./seed'),
                 node = this.el.cloneNode(true)
             
-            var spore = new Seed(node, data, {
-                    eachPrefix: this.arg,
+            var spore = new Seed(node, {
+                    eachPrefixRE: new RegExp('^' + this.arg + '.'),
                     parentSeed: this.seed,
-                    eachIndex: index,
-                    eachCollection: collection
+                    index: index,
+                    eachCollection: collection,
+                    data: data
                 })
             this.container.insertBefore(node, this.marker)
             collection[index] = spore.scope

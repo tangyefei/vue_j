@@ -1,15 +1,20 @@
-var Emitter = require('emitter'),
-    config        = require('./config'),
-    controllers   = require('./controllers'),
+var Emitter         = require('emitter'),
+    config          = require('./config'),
     DirectiveParser = require('./directive-parser')
 
-var slice = Array.prototype.slice;
+var slice = Array.prototype.slice
+
+var ancestorKeyRE = /\^/g,
+    rootKeyRE = /^\$/
 
 // lazy init
 var ctrlAttr,
     eachAttr
 
-function Seed (el, data, options) {
+function Seed (el, options) {
+
+
+    console.log('Seed constructor...')
 
     // refresh
     ctrlAttr = config.prefix + '-controller'
@@ -19,34 +24,41 @@ function Seed (el, data, options) {
         el = document.querySelector(el)
     }
 
-    el.seed = this
-    this.el         = el
-    this.scope      = data
-    this._bindings  = {}
+    el.seed        = this
+    this.el        = el
+    this._bindings = {}
+    this.components = {}
 
     if (options) {
-        this.parentSeed = options.parentSeed
-        this.eachPrefixRE = new RegExp('^' + options.eachPrefix + '.');
-        this.eachIndex = options.eachIndex;
+        for (var op in options) {
+            this[op] = options[op]
+        }
     }
 
+    // initiate the scope
+    var dataPrefix = config.prefix + '-data'
+    this.scope =
+        (options && options.data)
+        || config.datum[el.getAttribute(dataPrefix)]
+        || {}
+    el.removeAttribute(dataPrefix)
 
-    var key
     // keep a temporary copy for all the real data
     // so we can overwrite the passed in data object
     // with getter/setters.
+    var key
     this._dataCopy = {}
-    for (key in data) {
-        this._dataCopy[key] = data[key]
+    for (key in this.scope) {
+        this._dataCopy[key] = this.scope[key]
     }
 
     // if has controller
     var ctrlID = el.getAttribute(ctrlAttr),
         controller = null
     if (ctrlID) {
-        controller = controllers[ctrlID]
+        controller = config.controllers[ctrlID]
+        if (!controller) console.warn('controller ' + ctrlID + ' is not defined.')
         el.removeAttribute(ctrlAttr)
-        if (!controller) throw new Error('controller ' + ctrlID + ' is not defined.')
     }
 
     // process nodes for directives
@@ -72,7 +84,7 @@ Seed.prototype._compileNode = function (node, root) {
     var self = this
 
     if (node.nodeType === 3 || node.nodeType === 8) { // text node
-        console.log('has come nodeType == 3 or 8')
+
         self._compileTextNode(node)
 
     } else {
@@ -82,25 +94,29 @@ Seed.prototype._compileNode = function (node, root) {
 
         if (eachExp) { // each block
 
-            console.log('eachExp...')
             var binding = DirectiveParser.parse(eachAttr, eachExp)
             if (binding) {
                 self._bind(node, binding)
                 // need to set each block now so it can inherit
                 // parent scope. i.e. the childSeeds must have been
                 // initiated when parent scope setters are invoked
-
-                // 找不到特别的理由，一定在这里调用
-
                 self.scope[binding.key] = self._dataCopy[binding.key]
-                delete self._dataCopy[binding.key]
+                ;delete self._dataCopy[binding.key]
             }
+
         } else if (ctrlExp && !root) { // nested controllers
 
-        // TODO need to be clever here!
+            var id = node.id,
+                seed = new Seed(node, {
+                    parentSeed: self
+                })
+            if (id) {
+                self['$' + id] = seed
+            }
 
         } else if (node.attributes && node.attributes.length) { // normal node (non-controller)
-            slice.call(node.attributes).forEach(function(attr) {
+
+            slice.call(node.attributes).forEach(function (attr) {
                 var valid = false
                 attr.value.split(',').forEach(function (exp) {
                     var binding = DirectiveParser.parse(attr.name, exp)
@@ -113,12 +129,11 @@ Seed.prototype._compileNode = function (node, root) {
             })
         }
 
-        if(!eachExp && !ctrlExp) {
-            if(node.childNodes.length) {
-                slice.call(node.childNodes).forEach(function(child) {
-                    self._compileNode(child);
+        if (!eachExp && !ctrlExp) {
+            if (node.childNodes.length) {
+                slice.call(node.childNodes).forEach(function (child) {
+                    self._compileNode(child)
                 })
-
             }
         }
     }
@@ -130,23 +145,39 @@ Seed.prototype._compileTextNode = function (node) {
 
 Seed.prototype._bind = function (node, directive) {
 
-    directive.el = node
+    directive.el   = node
     directive.seed = this
 
     var key = directive.key,
         snr = this.eachPrefixRE,
         isEachKey = snr && snr.test(key),
         scopeOwner = this
-    // TODO make scope chain work on nested controllers
 
-    // 如果表达式中是类似于 todo.done的，那么直接替换掉todo.当前缀，然后使用自身作用域
     if (isEachKey) {
         key = key.replace(snr, '')
-    } else if (snr) { // 否则是changeMessage这样的 ，表明需要使用父中的方法
-        scopeOwner = this.parentSeed
     }
 
-    directive.key = key;
+    // handle scope nesting
+    if (snr && !isEachKey) {
+        scopeOwner = this.parentSeed
+    } else {
+        var ancestors = key.match(ancestorKeyRE),
+            root      = key.match(rootKeyRE)
+        if (ancestors) {
+            key = key.replace(ancestorKeyRE, '')
+            var levels = ancestors.length
+            while (scopeOwner.parentSeed && levels--) {
+                scopeOwner = scopeOwner.parentSeed
+            }
+        } else if (root) {
+            key = key.replace(rootKeyRE, '')
+            while (scopeOwner.parentSeed) {
+                scopeOwner = scopeOwner.parentSeed
+            }
+        }
+    }
+
+    directive.key = key
 
     var binding = scopeOwner._bindings[key] || scopeOwner._createBinding(key)
 
@@ -177,7 +208,6 @@ Seed.prototype._createBinding = function (key) {
         set: function (value) {
             binding.value = value
             binding.instances.forEach(function (instance) {
-                console.log('key set: ' + JSON.stringify(value))
                 instance.update(value)
             })
         }
@@ -186,18 +216,10 @@ Seed.prototype._createBinding = function (key) {
     return binding
 }
 
-Seed.prototype.dump = function () {
-    var data = {}
-    for (var key in this._bindings) {
-        data[key] = this._bindings[key].value
-    }
-    return data
-}
-
 Seed.prototype.destroy = function () {
     for (var key in this._bindings) {
         this._bindings[key].instances.forEach(unbind)
-        delete this._bindings[key]
+        ;delete this._bindings[key]
     }
     this.el.parentNode.removeChild(this.el)
     function unbind (instance) {
