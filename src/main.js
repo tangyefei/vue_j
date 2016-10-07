@@ -4,8 +4,26 @@ var config      = require('./config'),
     filters     = require('./filters')
 
 var controllers = config.controllers,
-    datum = config.datum,
-    api = {};
+    datum       = config.datum,
+    api         = {}
+
+// API
+
+api.data = function (id, data) {
+    if (!data) return datum[id]
+    if (datum[id]) {
+        console.warn('data object "' + id + '"" already exists and has been overwritten.')
+    }
+    datum[id] = data
+}
+
+api.controller = function (id, extensions) {
+    if (!extensions) return controllers[id]
+    if (controllers[id]) {
+        console.warn('controller "' + id + '" already exists and has been overwritten.')
+    }
+    controllers[id] = extensions
+}
 
 api.directive = function (name, fn) {
     directives[name] = fn
@@ -15,41 +33,23 @@ api.filter = function (name, fn) {
     filters[name] = fn
 }
 
-api.data = function(id, data){
-    if(!data) return datum[id];
-    if(datum[id]) {
-        console.warn('data object "' + id + '"" already exists and has been overwritten.')
-    }
-    datum[id] = data;
-}
-api.controller = function (id, extensions) {
-    if (!extensions) return controllers[id]
-    if (controllers[id]) {
-        console.warn('controller "' + id + '" already exists and has been overwritten.')
-    }
-    controllers[id] = extensions
-}
-
 api.bootstrap = function (opts) {
-    var app  = {},
-	n = 0,
-	el = document.querySelector('[' + config.prefix + '-controller]'),
-        seed;
-
-    if(opts) {
-        config.prefix = opts.prefix || config.prefix;
+    if (opts) {
+        config.prefix = opts.prefix || config.prefix
     }
-	
-    while(el) {
-        seed = new Seed(el);
-        if(el.id) {
-            app['$' + el.id] = seed;
+    var app = {},
+        n = 0,
+        el = document.querySelector('[' + config.prefix + '-controller]'),
+        seed
+    while (el) {
+        seed = new Seed(el)
+        if (el.id) {
+            app['$' + el.id] = seed
         }
-        el = document.querySelector('[' + config.prefix + '-controller]');
-	n ++;
+        n++
+        el = document.querySelector('[' + config.prefix + '-controller]')
     }
-    return n > 1 ? app : seed;
+    return n > 1 ? app : seed
 }
-
 
 module.exports = api

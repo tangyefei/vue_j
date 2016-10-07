@@ -2,12 +2,13 @@ var config     = require('./config'),
     directives = require('./directives'),
     filters    = require('./filters')
 
-var KEY_RE          = /^[^\|]+/,
+var KEY_RE          = /^[^\|<]+/,
     ARG_RE          = /([^:]+):(.+)$/,
-    FILTERS_RE      = /\|[^\|]+/g,
+    FILTERS_RE      = /\|[^\|<]+/g,
     FILTER_TOKEN_RE = /[^\s']+|'[^']+'/g,
+    DEPS_RE         = /<[^<\|]+/g,
     QUOTE_RE        = /'/g
-
+    
 function Directive (directiveName, expression) {
 
     var directive = directives[directiveName]
@@ -23,6 +24,9 @@ function Directive (directiveName, expression) {
         }
     }
 
+    this.directiveName = directiveName
+    this.expression = expression
+
     var rawKey   = expression.match(KEY_RE)[0], // guarded in parse
         argMatch = rawKey.match(ARG_RE)
 
@@ -34,9 +38,9 @@ function Directive (directiveName, expression) {
         ? argMatch[1].trim()
         : null
     
-    var filterExpressions = expression.match(FILTERS_RE)
-    if (filterExpressions) {
-        this.filters = filterExpressions.map(function (filter) {
+    var filterExps = expression.match(FILTERS_RE)
+    if (filterExps) {
+        this.filters = filterExps.map(function (filter) {
             var tokens = filter.slice(1)
                 .match(FILTER_TOKEN_RE)
                 .map(function (token) {
@@ -53,9 +57,21 @@ function Directive (directiveName, expression) {
     } else {
         this.filters = null
     }
+    var depExp = expression.match(DEPS_RE)
+    if (depExp) {
+        this.deps = depExp[0].slice(1).trim().split(/\s+/)
+    }
 }
 
+
+
+
 Directive.prototype.update = function (value) {
+    // computed property
+    if (typeof value === 'function' && !this.fn) {
+        value = value()
+    }
+
     // apply filters
     if (this.filters) {
         value = this.applyFilters(value)

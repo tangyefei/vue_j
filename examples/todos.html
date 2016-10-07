@@ -62,18 +62,19 @@
             { text: 'parse textnodes', done: false }
         ]
 
-        Seed.data("test", {todos: todos});
+            Seed.controller('Todos', function (scope, seed) {
 
-        Seed.controller('Todos', function(scope, seed) {
-    	    // scope.todos = todos;
-            scope.filter = 'all';
-            scope.remaining = todos.reduce(function(count, todo) {
-                return count + (todo.done ? 0 : 1)
-            }, 0);
-            // computed properties
-            scope.total = function () {
-                return scope.todos.length
-            }
+                // regular properties
+                scope.todos = todos
+                scope.filter = 'all'
+                scope.remaining = todos.reduce(function (count, todo) {
+                    return count + (todo.done ? 0 : 1)
+                }, 0)
+
+                // computed properties
+                scope.total = function () {
+                    return scope.todos.length
+                }
 
             scope.completed = function () {
                 return scope.todos.length - scope.remaining
@@ -102,7 +103,8 @@
             }
         })
 
-	Seed.bootstrap();
-</script>
-</body>
+            var app = Seed.bootstrap()
+
+        </script>
+    </body>
 </html>

@@ -1,10 +1,34 @@
 var config = require('./config'),
     watchArray = require('./watch-array')
 
+// sniff matchesSelector() method name.
+
+var matches = 'atchesSelector',
+    prefixes = ['m', 'webkitM', 'mozM', 'msM']
+
+prefixes.some(function (prefix) {
+    var match = prefix + matches
+    if (document.body[match]) {
+        matches = match
+        return true
+    }
+})
+
+function delegateCheck (current, top, selector) {
+    if (current.webkitMatchesSelector(selector)) {
+        return current
+    } else if (current === top) {
+        return false
+    } else {
+        return delegateCheck(current.parentNode, top, selector)
+    }
+}
+
 module.exports = {
 
     text: function (value) {
-        this.el.textContent = value === null ? '' : value.toString()
+        this.el.textContent = value === null ?
+            '' : value.toString()
     },
 
     show: function (value) {
@@ -12,8 +36,12 @@ module.exports = {
     },
 
     class: function (value) {
-        if(this.arg) {
+        if (this.arg) {
             this.el.classList[value ? 'add' : 'remove'](this.arg)
+        } else {
+            this.el.classList.remove(this.lastVal)
+            this.el.classList.add(value)
+            this.lastVal = value
         }
     },
 
@@ -27,7 +55,6 @@ module.exports = {
             el.addEventListener('change', this.change)
         },
         update: function (value) {
-            // 真正值被储存在了binding.value中，这里只是用作同步到dom的操作
             this.el.checked = value
         },
         unbind: function () {
@@ -36,32 +63,68 @@ module.exports = {
     },
 
     on: {
-        update: function (handler) {
-            var self = this,
-                event = this.arg;
-            if (this.handler) {
-                this.el.removeEventListener(event, this.handler)
+        fn : true,
+        bind: function () {
+            // 每个each的便利单元有一个seed，即在li下的多个输入元素艘在这个seed下，并且都能访问到each变量
+            if (this.seed.each) {
+                this.selector = '[' + this.directiveName + '*="' + this.expression + '"]'
+                this.delegator = this.seed.el.parentNode
             }
-            if (handler) {
-                var _handler = function(e) {
+        },
+        update: function (handler) {
+            this.unbind()
+            if (!handler) return
+            var self  = this,
+                event = this.arg,
+                selector  = this.selector,
+                delegator = this.delegator
+            if (delegator) {
+
+                // for each blocks, delegate for better performance
+                if (!delegator[selector]) {
+                    console.log('binding listener')
+                    delegator[selector] = function (e) {
+                        var target = delegateCheck(e.target, delegator, selector)
+                        if (target) {
+                            handler({
+                                el            : target,
+                                originalEvent : e,
+                                directive     : self,
+                                seed          : target.seed
+                            })
+                        }
+                    }
+                    delegator.addEventListener(event, delegator[selector])
+                }
+
+            } else {
+
+                // a normal handler
+                this.handler = function (e) {
                     handler({
-                        el: e.currentTarget,
-                        originalEvent: e,
-                        directive: self,
-                        seed: e.currentTarget.seed
+                        el            : e.currentTarget,
+                        originalEvent : e,
+                        directive     : self,
+                        seed          : self.seed
                     })
                 }
-                this.el.addEventListener(event, _handler);
-                this.handler = _handler
+                this.el.addEventListener(event, this.handler)
+
             }
         },
         unbind: function () {
-            var event = this.arg
-            if (this.handlers) {
-                this.el.removeEventListener(event, this.handlers[event])
+            var event = this.arg,
+                selector  = this.selector,
+                delegator = this.delegator
+            if (delegator && delegator[selector]) {
+                delegator.removeEventListener(event, delegator[selector])
+                delete delegator[selector]
+            } else if (this.handler) {
+                this.el.removeEventListener(event, this.handler)
             }
         }
     },
+
     each: {
         bind: function () {
             this.el.removeAttribute(config.prefix + '-each')
@@ -72,24 +135,20 @@ module.exports = {
             this.childSeeds = []
         },
         update: function (collection) {
-            this.unbind(true);
+            this.unbind(true)
             this.childSeeds = []
-
-            if(!Array.isArray(collection))return
+            if (!Array.isArray(collection)) return
             watchArray(collection, this.mutate.bind(this))
             var self = this
             collection.forEach(function (item, i) {
                 self.childSeeds.push(self.buildItem(item, i, collection))
             })
         },
-        mutate: function (mutation) {
-            console.log(mutation)
-        },
         buildItem: function (data, index, collection) {
             var Seed = require('./seed'),
                 node = this.el.cloneNode(true)
-            
             var spore = new Seed(node, {
+                    each: true,
                     eachPrefixRE: new RegExp('^' + this.arg + '.'),
                     parentSeed: this.seed,
                     index: index,
@@ -99,11 +158,14 @@ module.exports = {
             collection[index] = spore.scope
             return spore
         },
+        mutate: function (mutation) {
+            console.log(mutation)
+        },
         unbind: function (rm) {
             if (this.childSeeds.length) {
-                var fn = rm ? 'destroy' : 'unbind'
+                var fn = rm ? '_destroy' : '_unbind'
                 this.childSeeds.forEach(function (child) {
-                    child[fn].call()
+                    child[fn]()
                 })
             }
         }
