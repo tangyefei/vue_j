@@ -1,11 +1,10 @@
-var Emitter         = require('emitter'),
-    config          = require('./config'),
-    DirectiveParser = require('./directive-parser')
+var config          = require('./config'),
+    DirectiveParser = require('./directive-parser'),
+    TextNodeParser  = require('./textnode-parser')
 
-var slice = Array.prototype.slice,
-    ancestorKeyRE = /\^/g,
-    ctrlAttr = config.prefix + '-controller',
-    eachAttr = config.prefix + '-each';
+var slice           = Array.prototype.slice,
+    ctrlAttr        = config.prefix + '-controller',
+    eachAttr        = config.prefix + '-each'
 
 function Seed (el, options) {
 
@@ -25,18 +24,23 @@ function Seed (el, options) {
 
     // initialize the scope object
     var dataPrefix = config.prefix + '-data'
-
-    this.scope =
-        (options && options.data)
-        || config.datum[el.getAttribute(dataPrefix)]
-        || {}
+    var scope = this.scope =
+            (options && options.data)
+            || config.datum[el.getAttribute(dataPrefix)]
+            || {}
     el.removeAttribute(dataPrefix)
 
+    // if the passed in data is already consumed by
+    // a Seed instance, make a copy from it
+    if (scope.$seed) {
+        scope = this.scope = scope.$dump()
+    }
 
-    this.scope.$seed    = this
-    this.scope.$destroy = this._destroy.bind(this)
-    this.scope.$dump    = this._dump.bind(this)
-    this.scope.$index   = options.index
+    scope.$seed     = this
+    scope.$destroy  = this._destroy.bind(this)
+    scope.$dump     = this._dump.bind(this)
+    scope.$index    = options.index
+    scope.$parent   = options.parentSeed && options.parentSeed.scope
 
     // revursively process nodes for directives
     this._compileNode(el, true)
@@ -47,22 +51,21 @@ function Seed (el, options) {
         el.removeAttribute(ctrlAttr)
         var controller = config.controllers[ctrlID]
         if (controller) {
-            controller.call(this, this.scope, this)
+            controller.call(this, this.scope)
         } else {
             console.warn('controller ' + ctrlID + ' is not defined.')
         }
     }
 }
 
-
 Seed.prototype._compileNode = function (node, root) {
     var self = this
 
-    if (node.nodeType === 3 || node.nodeType === 8) { // text node
+    if (node.nodeType === 3) { // text node
 
         self._compileTextNode(node)
 
-    } else {
+    } else if (node.nodeType !== 8) { // exclude comment nodes
 
         var eachExp = node.getAttribute(eachAttr),
             ctrlExp = node.getAttribute(ctrlAttr)
@@ -114,7 +117,7 @@ Seed.prototype._compileNode = function (node, root) {
 }
 
 Seed.prototype._compileTextNode = function (node) {
-    return node
+    return TextNodeParser.parse(node)
 }
 
 Seed.prototype._bind = function (node, directive) {
@@ -123,49 +126,53 @@ Seed.prototype._bind = function (node, directive) {
     directive.seed = this
 
     var key = directive.key,
-        snr = this.eachPrefixRE,
-        isEachKey = snr && snr.test(key),
-        scopeOwner = this
+        epr = this.eachPrefixRE,
+        isEachKey = epr && epr.test(key),
+        scope = this
 
     if (isEachKey) {
-        key = key.replace(snr, '')
+        key = directive.key = key.replace(epr, '')
     }
 
-    // handle scope nesting
-    if (snr && !isEachKey) {
-        scopeOwner = this.parentSeed
-    } else {
-        var ancestors = key.match(ancestorKeyRE),
-            root      = key.charAt(0) === '$'
-        if (ancestors) {
-            key = key.replace(ancestorKeyRE, '')
-            var levels = ancestors.length
-            while (scopeOwner.parentSeed && levels--) {
-                scopeOwner = scopeOwner.parentSeed
-            }
-        } else if (root) {
-            key = key.slice(1)
-            while (scopeOwner.parentSeed) {
-                scopeOwner = scopeOwner.parentSeed
-            }
-        }
+    if (epr && !isEachKey) {
+        scope = this.parentSeed
     }
 
-    directive.key = key
-
-    var binding = scopeOwner._bindings[key] || scopeOwner._createBinding(key)
+    var ownerScope = determinScope(directive, scope),
+        binding =
+            ownerScope._bindings[key] ||
+            ownerScope._createBinding(key)
 
     // add directive to this binding
     binding.instances.push(directive)
+    directive.binding = binding
 
     // invoke bind hook if exists
-    if(directive.bind) {
+    if (directive.bind) {
         directive.bind(binding.value)
     }
 
     // set initial value
-    if (binding.value) {
-        directive.update(binding.value)
+    directive.update(binding.value)
+
+    // computed properties
+    if (directive.deps) {
+        console.log('yes...')
+        directive.deps.forEach(function (dep) {
+            var depScope = determinScope(dep, scope),
+                depBinding =
+                    depScope._bindings[dep.key] ||
+                    depScope._createBinding(dep.key)
+            if (!depBinding.dependents) {
+                depBinding.dependents = []
+                depBinding.refreshDependents = function () {
+                    depBinding.dependents.forEach(function (dept) {
+                        dept.refresh()
+                    })
+                }
+            }
+            depBinding.dependents.push(directive)
+        })
     }
 
 }
@@ -192,6 +199,9 @@ Seed.prototype._createBinding = function (key) {
             binding.instances.forEach(function (instance) {
                 instance.update(value)
             })
+            if (binding.refreshDependents) {
+                binding.refreshDependents()
+            }
         }
     })
 
@@ -204,7 +214,7 @@ Seed.prototype._unbind = function () {
             instance.unbind()
         }
     }
-    for(var key in this._bindings) {
+    for (var key in this._bindings) {
         this._bindings[key].instances.forEach(unbind)
     }
 }
@@ -237,6 +247,20 @@ Seed.prototype._dump = function () {
     return dump
 }
 
-Emitter(Seed.prototype)
+// Helpers --------------------------------------------------------------------
+
+function determinScope (key, scope) {
+    if (key.nesting) {
+        var levels = key.nesting
+        while (scope.parentSeed && levels--) {
+            scope = scope.parentSeed
+        }
+    } else if (key.root) {
+        while (scope.parentSeed) {
+            scope = scope.parentSeed
+        }
+    }
+    return scope
+}
 
 module.exports = Seed

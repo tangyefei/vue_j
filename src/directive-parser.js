@@ -7,15 +7,62 @@ var KEY_RE          = /^[^\|<]+/,
     FILTERS_RE      = /\|[^\|<]+/g,
     FILTER_TOKEN_RE = /[^\s']+|'[^']+'/g,
     DEPS_RE         = /<[^<\|]+/g,
-    QUOTE_RE        = /'/g
-    
+    NESTING_RE      = /^\^+/
+
+// parse a key, extract argument and nesting/root info
+function parseKey (rawKey) {
+
+    var res = {},
+        argMatch = rawKey.match(ARG_RE)
+
+    res.key = argMatch
+        ? argMatch[2].trim()
+        : rawKey.trim()
+
+    res.arg = argMatch
+        ? argMatch[1].trim()
+        : null
+
+    var nesting = res.key.match(NESTING_RE)
+    res.nesting = nesting
+        ? nesting[0].length
+        : false
+
+    res.root = res.key.charAt(0) === '$'
+
+    if (res.nesting) {
+        res.key = res.key.replace(NESTING_RE, '')
+    } else if (res.root) {
+        res.key = res.key.slice(1)
+    }
+
+    return res
+}
+
+function parseFilter (filter) {
+
+    var tokens = filter.slice(1)
+        .match(FILTER_TOKEN_RE)
+        .map(function (token) {
+            return token.replace(/'/g, '').trim()
+        })
+
+    return {
+        name  : tokens[0],
+        apply : filters[tokens[0]],
+        args  : tokens.length > 1
+                ? tokens.slice(1)
+                : null
+    }
+}
+
 function Directive (directiveName, expression) {
 
-    var directive = directives[directiveName]
+    var prop, directive = directives[directiveName]
     if (typeof directive === 'function') {
         this._update = directive
     } else {
-        for (var prop in directive) {
+        for (prop in directive) {
             if (prop === 'update') {
                 this['_update'] = directive.update
             } else {
@@ -27,56 +74,53 @@ function Directive (directiveName, expression) {
     this.directiveName = directiveName
     this.expression = expression
 
-    var rawKey   = expression.match(KEY_RE)[0], // guarded in parse
-        argMatch = rawKey.match(ARG_RE)
+    var rawKey   = expression.match(KEY_RE)[0],
+        keyInfo  = parseKey(rawKey)
 
-    this.key = argMatch
-        ? argMatch[2].trim()
-        : rawKey.trim()
-
-    this.arg = argMatch
-        ? argMatch[1].trim()
-        : null
+    for (prop in keyInfo) {
+        this[prop] = keyInfo[prop]
+    }
     
     var filterExps = expression.match(FILTERS_RE)
-    if (filterExps) {
-        this.filters = filterExps.map(function (filter) {
-            var tokens = filter.slice(1)
-                .match(FILTER_TOKEN_RE)
-                .map(function (token) {
-                    return token.replace(QUOTE_RE, '').trim()
-                })
-            return {
-                name  : tokens[0],
-                apply : filters[tokens[0]],
-                args  : tokens.length > 1
-                        ? tokens.slice(1)
-                        : null
-            }
-        })
-    } else {
-        this.filters = null
-    }
+    this.filters = filterExps
+        ? filterExps.map(parseFilter)
+        : null
+
     var depExp = expression.match(DEPS_RE)
-    if (depExp) {
-        this.deps = depExp[0].slice(1).trim().split(/\s+/)
+    this.deps = depExp
+        ? depExp[0].slice(1).trim().split(/\s+/).map(parseKey)
+        : null
+}
+
+// called when a dependency has changed
+Directive.prototype.refresh = function () {
+    if (this.value) {
+        var value = this.value.call(this.seed.scope)
+        this._update(
+            this.filters
+            ? this.applyFilters(value)
+            : value
+        )
+    }
+    if (this.binding.refreshDependents) {
+        this.binding.refreshDependents()
     }
 }
 
-
-
-
+// called when a new value is set
 Directive.prototype.update = function (value) {
+    if (value && (value === this.value)) return
+    this.value = value
     // computed property
     if (typeof value === 'function' && !this.fn) {
         value = value()
     }
-
-    // apply filters
-    if (this.filters) {
-        value = this.applyFilters(value)
-    }
-    this._update(value)
+    this._update(
+        this.filters
+        ? this.applyFilters(value)
+        : value
+    )
+    if (this.deps) this.refresh()
 }
 
 Directive.prototype.applyFilters = function (value) {
