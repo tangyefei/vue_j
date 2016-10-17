@@ -8,6 +8,7 @@
 	"scripts": [
             "src/main.js",
             "src/seed.js",
+            "src/directive-parser.js",
             "src/config.js",
             "src/directives/index.js",
             "src/directives/each.js",

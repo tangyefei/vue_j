@@ -1,21 +1,23 @@
-var app = {},
-    Seed = require("./seed"),
-    config = require("./config"),
-    controllers = config.controllers;
+var config      = require('./config'),
+    Seed        = require('./seed')
 
-app.controller = function(name, fn) {
-    controllers[name] = fn;
-}
+var controllers = config.controllers,
+    api         = {}
 
-app.bootstrap = function(el) {
-    if(typeof el === 'string') {
-        el = document.querySelector(el);
-        new Seed(el,{
-            parentScope: null,
-            scope: null,
-            root: true
-        });
+// API
+
+
+api.controller = function (id, extensions) {
+    if (!extensions) return controllers[id]
+    if (controllers[id]) {
+        console.warn('controller "' + id + '" already exists and has been overwritten.')
     }
+    controllers[id] = extensions
 }
 
-module.exports = app
+api.bootstrap = function () {
+    var el = document.querySelector('[' + config.prefix + '-controller]');
+    return (new Seed(el))
+}
+
+module.exports = api
