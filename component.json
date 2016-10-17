@@ -7,11 +7,8 @@
 	"main": "src/main.js",
 	"scripts": [
             "src/main.js",
-            "src/config.js",
             "src/seed.js",
-            "src/directive-parser.js",
-            "src/textnode-parser.js",
-            "src/filters.js",
+            "src/config.js",
             "src/directives/index.js",
             "src/directives/each.js",
             "src/directives/on.js"

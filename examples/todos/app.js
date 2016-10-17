@@ -1,80 +1,65 @@
-var Seed = require('seed')
-
 var todos = [
-    { text: 'make nesting controllers work', done: true },
-    { text: 'complete ArrayWatcher', done: false },
-    { text: 'computed properties', done: false },
-    { text: 'parse textnodes', done: false }
-]
+    {title: 'Chan bug fix',done: false},
+    {title: 'Learn vue source code',done: true},
+    {title: 'What is the reason',done: false}
+];
 
-Seed.controller('Todos', function (scope) {
+var app = require("seed");
 
-    // regular properties -----------------------------------------------------
-    scope.todos = todos
-    scope.filter = 'all'
-    scope.allDone = false
-    scope.remaining = todos.reduce(function (count, todo) {
-        return count + (todo.done ? 0 : 1)
-    }, 0)
+app.controller('Todos', function(scope){
+    scope.todos = todos;
+    scope.total = todos.length;
 
-    // computed properties ----------------------------------------------------
-    scope.total = function () {
-        return scope.todos.length
+    scope.completed = function(e){
+        return scope.todos.filter(function(n,i){return n.done;}).length;
     }
 
-    scope.completed = function () {
-        return scope.total() - scope.remaining
+    scope.setFilter = function(e){
+        var filter = e.target.getAttribute('data-filter');
+        var wrapper =document.getElementById('todoapp').className = filter;
     }
 
-    scope.itemLabel = function () {
-        return scope.remaining > 1 ? 'items' : 'item'
-    }
-
-    // event handlers ---------------------------------------------------------
-    scope.addTodo = function (e) {
-        var val = e.el.value
-        if (val) {
-            e.el.value = ''
-            scope.todos.unshift({ text: val, done: false })
+    scope.addTodo = function(e){
+        var val = e.currentTarget.value;
+        if(val && val.trim()){
+            scope.todos.$push({title: val, done: false});
+            scope.total++;
         }
-        scope.remaining++
+        e.currentTarget.value = "";
     }
 
-    scope.removeTodo = function (e) {
-        scope.todos.remove(e.scope)
-        scope.remaining -= e.scope.done ? 0 : 1
-    }
-
-    scope.updateCount = function (e) {
-        scope.remaining += e.scope.done ? -1 : 1
-        scope.allDone = scope.remaining === 0
-    }
-
-    scope.edit = function (e) {
-        e.scope.editing = true
-    }
-
-    scope.stopEdit = function (e) {
-        e.scope.editing = false
-    }
-
-    scope.setFilter = function (e) {
-        scope.filter = e.el.dataset.filter
-    }
-
-    scope.toggleAll = function (e) {
-        scope.todos.forEach(function (todo) {
-            todo.done = e.el.checked
+    scope.removeTodo = function(e, _id, seed) {
+        scope.todos.filter(function(n){
+            return n._id != _id;
         })
-        scope.remaining = e.el.checked ? 0 : scope.total()
+        scope.total--;
+        seed.destroy();
     }
 
-    scope.removeCompleted = function () {
-        scope.todos = scope.todos.filter(function (todo) {
-            return !todo.done
+    scope.removeCompleted = function(e, _id, seed) {
+        seed.childSeeds.forEach(function(seed){
+            if(seed.scope.done) {
+                seed.destroy();
+                scope.total --;
+                var index = scope.todos.indexOf(seed.scope);
+                scope.todos.splice(seed.scope)
+            }
         })
     }
 
+    scope.selectAll = function(e){
+        var checked = e.target.checked;
+        scope.todos.forEach(function(todo){
+            todo.done = checked;
+        })
+    }
+
+    scope.toggleTodo = function(e, _id, seed) {
+        var todo = scope.todos.find(function(n){
+            return n._id == _id;
+        })
+        todo.done = !todo.done;
+    }
 })
 
-Seed.bootstrap()
+app.bootstrap('#todoapp');

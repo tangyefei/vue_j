@@ -1,6 +1,9 @@
 module.exports = {
     prefix: 'sd',
-    controllers: {},
-    datum: {},
-    seeds: {}
+    eachExp: 'sd-each',
+    ctrlExp: 'sd-controller',
+    // controllers: {},
+    // datum: {},
+    // seeds: {}
+    controllers: {}
 }
