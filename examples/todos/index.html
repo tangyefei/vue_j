@@ -22,14 +22,29 @@
              <!-- | key enter -->
 
              <section id="main">
-                <input id="toggle-all" type="checkbox">
+                <input id="toggle-all" type="checkbox" sd-checked="allDone" sd-on="change:toggleAll">
                 <ul id="todo-list">
                     <li sd-each="todo:todos" sd-class="completed:todo.done, editing:todo.editing">
                         <div class="view">
+                            <input
+                                class="toggle"
+                                type="checkbox"
+                                sd-checked="todo.done"
+                                sd-on="change:updateCount"
+                            >
                             <label
                                 sd-text="todo.text"
+                                sd-on="dblclick:edit"
                             ></label>
                         </div>
+                        <input
+                            class="edit"
+                            type="text"
+                            sd-focus="todo.editing"
+                            sd-on="blur:stopEdit"
+                            sd-value="todo.text"
+                        >
+                         <!--, keyup:stopEdit | key enter -->
                     </li>
                 </ul>
             </section>
@@ -62,13 +77,13 @@
                     </li>
                 </ul>
             </section>
+            -->
 
-            <footer id="footer" sd-show="total < todos">
+            <footer id="footer">
                 <span id="todo-count">
                     <strong sd-text="remaining"></strong>
-                    <span sd-text="itemLabel < remaining"></span>
-                    left
                 </span>
+            <!--
                 <ul id="filters">
                     <li><a href="#/all" data-filter="all" sd-on="click:setFilter">All</a></li>
                     <li><a href="#/active" data-filter="active" sd-on="click:setFilter">Active</a></li>
@@ -77,8 +92,8 @@
                 <button id="clear-completed" sd-on="click:removeCompleted">
                     Remove Completed (<span sd-text="completed < total remaining"></span>)
                 </button>
+            -->
             </footer>
- -->
         </section>
 
         <footer id="info">
