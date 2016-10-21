@@ -36,6 +36,7 @@
                                 sd-text="todo.text"
                                 sd-on="dblclick:edit"
                             ></label>
+                            <button class="destroy" sd-on="click:removeTodo"></button>
                         </div>
                         <input
                             class="edit"
@@ -89,10 +90,11 @@
                     <li><a href="#/active" data-filter="active" sd-on="click:setFilter">Active</a></li>
                     <li><a href="#/completed" data-filter="completed" sd-on="click:setFilter">Completed</a></li>
                 </ul>
-                <button id="clear-completed" sd-on="click:removeCompleted">
-                    Remove Completed (<span sd-text="completed < total remaining"></span>)
-                </button>
             -->
+                <button id="clear-completed" sd-on="click:removeCompleted">
+                    Remove Completed 
+                    <!-- (<span sd-text="completed < total remaining"></span>) -->
+                </button>
             </footer>
         </section>
 

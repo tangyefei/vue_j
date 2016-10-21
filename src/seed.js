@@ -19,7 +19,10 @@ function Seed (el, options) {
         this[op] = options[op]
     }
 
-    this.scope = (options && options.data) || {};
+    var scope = this.scope = (options && options.data) || {};
+    scope.$seed      = this
+    scope.$index    = options.index
+    scope.$destroy  = this._destroy.bind(this)
     
     // revursively process nodes for directives
     this._compileNode(el, true)
@@ -109,8 +112,28 @@ Seed.prototype._bind = function (node, directive) {
     directive.update(binding.value)
 }
 
-Seed.prototype._createBinding = function (key) {
 
+Seed.prototype._unbind = function () {
+    var unbind = function (instance) {
+        if (instance.unbind) {
+            instance.unbind()
+        }
+    }
+    for (var key in this._bindings) {
+        this._bindings[key].instances.forEach(unbind)
+    }
+}
+
+Seed.prototype._destroy = function () {
+    this._unbind()
+    delete this.el.seed
+    this.el.parentNode.removeChild(this.el)
+    if (this.parentSeed && this.id) {
+        delete this.parentSeed['$' + this.id]
+    }
+}
+
+Seed.prototype._createBinding = function (key) {
     var binding = {
         value: this.scope[key],
         instances: []

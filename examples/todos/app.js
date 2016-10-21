@@ -15,7 +15,6 @@ Seed.controller('Todos', function(scope){
     scope.remaining = todos.reduce(function (count, todo) {
         return count + (todo.done ? 0 : 1)
     }, 0)
-
     // event handlers ---------------------------------------------------------
     scope.total = function () {
         return scope.todos.length
@@ -29,10 +28,15 @@ Seed.controller('Todos', function(scope){
         scope.remaining++
     }
 
+    scope.removeTodo = function (e) {
+        scope.todos.remove(e.scope)
+        scope.remaining -= e.scope.done ? 0 : 1
+    }
+
     scope.updateCount = function (e) {
         scope.remaining += e.scope.done ? -1 : 1
         scope.allDone = scope.remaining === 0
-    }
+    }   
 
     scope.edit = function (e) {
         e.scope.editing = true
@@ -47,6 +51,12 @@ Seed.controller('Todos', function(scope){
             todo.done = e.el.checked
         })
         scope.remaining = e.el.checked ? 0 : scope.total()
+    }
+    
+    scope.removeCompleted = function () {
+        scope.todos = scope.todos.filter(function (todo) {
+            return !todo.done
+        })
     }
 })
 
